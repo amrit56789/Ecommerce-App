@@ -1,0 +1,10 @@
+flask==2.2.5
+werkzeug==2.2.3
+Flask-JWT-Extended==4.4.3
+Flask-Mail==0.9.1
+cloudinary==1.27.0
+bcrypt==4.0.1
+pymongo==4.1.0
+python-dotenv==0.20.0
+flask-mongoengine==1.0.0
+flask-bcrypt==4.0.1

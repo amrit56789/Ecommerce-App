@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <script>
+    async function loadUsers() {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      document.getElementById("user-list").innerHTML = JSON.stringify(data);
+    }
+    window.onload = loadUsers;
+  </script>
+</head>
+<body>
+  <h1>Dashboard</h1>
+  <div id="user-list">Loading users...</div>
+</body>
+</html>

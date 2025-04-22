@@ -7,58 +7,91 @@ from datetime import datetime, timedelta
 from .auth_decorator import role_required
 import cloudinary
 import cloudinary.uploader
-
-auth_bp = Blueprint('auth', __name__)
-
 from flask import request, jsonify
 from app.models.user import User
 from app.models.role import Role
 
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+#register api
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
 
-    if not all(key in data for key in ['email', 'password']):
-        return jsonify({'message': 'Missing required fields'}), 400
+    email = data.get('email', '').strip()
+    password = data.get('password', '').strip()
+    role_name = data.get('role', 'user')
 
-    if User.objects(email=data['email']).first():
+    if not email:
+        return jsonify({'message': 'Email is required'}), 400
+
+    if '@' not in email or '.' not in email.split('@')[-1]:
+        return jsonify({'message': 'Invalid email format'}), 400
+
+    if not password:
+        return jsonify({'message': 'Password is required'}), 400
+
+    if len(password) < 6:
+        return jsonify({'message': 'Password must be at least 6 characters'}), 400
+
+    has_upper = any(c.isupper() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    has_special = any(not c.isalnum() for c in password)
+
+    if not (has_upper and has_digit and has_special):
+        return jsonify({'message': 'Password must contain at least one uppercase letter, one number, and one special character'}), 400
+
+    if User.objects(email=email).first():
         return jsonify({'message': 'Email already exists'}), 409
 
-    role_name = data.get('role', 'user')
     role = Role.objects(name=role_name).first()
     if not role:
         return jsonify({'message': 'Invalid role'}), 400
 
     user = User(
-        email=data['email'],
-        password=data['password'],
-        role=role  # Storing role reference
+        email=email,
+        password=password,
+        role=role
     )
     user.hash_password()
     user.save()
 
     return jsonify({'message': 'User registered successfully'}), 201
 
-
-
-# user login api
+# login api
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
 
-    if not all(key in data for key in ['email', 'password']):
-        return jsonify({'message': 'Missing email or password'}), 400
+    email = data.get('email', '').strip()
+    password = data.get('password', '').strip()
 
-    user = User.objects(email=data['email']).first()
+    if not email:
+        return jsonify({'message': 'Email is required'}), 400
 
-    if not user or not user.check_password(data['password']):
-        return jsonify({'message': 'Please enter a valid password'}), 401
+    if '@' not in email or '.' not in email.split('@')[-1]:
+        return jsonify({'message': 'Invalid email format'}), 400
+
+    if not password:
+        return jsonify({'message': 'Password is required'}), 400
+
+    user = User.objects(email=email).first()
+
+    if not user:
+        return jsonify({'message': 'User with this email does not exist'}), 404
+
+    if not user.check_password(password):
+        return jsonify({'message': 'Invalid password'}), 401
 
     access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
-    return jsonify({'access_token': access_token, 'role': user.role}), 200
 
-# forget password api
-@auth_bp.route('/forgot-password', methods=['POST'])
+    return jsonify({
+        'message': 'Login successful',
+        'access_token': access_token
+    }), 200
+
+
+@auth_bp.route('/send-email-code', methods=['POST'])
 def forgot_password():
     data = request.get_json()
     email = data.get('email')
@@ -68,7 +101,7 @@ def forgot_password():
 
     user = User.objects(email=email).first()
     if not user:
-        return jsonify({'message': 'If this email exists, an OTP has been sent'}), 200
+        return jsonify({'message': 'No account associated with this email address'}), 400
 
     otp = ''.join(random.choices('0123456789', k=6))
     expiry_time = datetime.utcnow() + timedelta(minutes=10)
@@ -91,13 +124,42 @@ def forgot_password():
         print(f"Error sending email: {e}")
         return jsonify({'message': 'Failed to send OTP email'}), 500
 
+# verify otp api
+@auth_bp.route('/verify-email-code', methods=['POST'])
+def verify_email_code():
+    data = request.get_json()
+    email = data.get('email')
+    otp = data.get('code')
+
+    if not email or not otp:
+        return jsonify({'message': 'Email and OTP are required'}), 400
+
+    user = User.objects(email=email).first()
+    if not user:
+        return jsonify({'message': 'Invalid email or OTP'}), 400
+
+    if not user.reset_otp or not user.otp_expiry:
+        return jsonify({'message': 'No OTP requested for this email'}), 400
+
+    current_time = datetime.utcnow()
+    if user.reset_otp != otp:
+        return jsonify({'message': 'Invalid OTP'}), 400
+    if current_time > user.otp_expiry:
+        return jsonify({'message': 'OTP has expired'}), 400
+
+    user.reset_otp = None
+    user.otp_expiry = None
+    user.save()
+
+    return jsonify({'message': 'OTP verified successfully'}), 200
+
 # reset password
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json()
     email = data.get('email')
-    otp = data.get('otp')
-    new_password = data.get('new_password')
+    otp = data.get('code')
+    new_password = data.get('password')
 
     if not email or not otp or not new_password:
         return jsonify({'message': 'Email, OTP, and new password are required'}), 400
@@ -120,121 +182,3 @@ def reset_password():
 
     return jsonify({'message': 'Password reset successfully'}), 200
 
-# get user profile
-@auth_bp.route('/user-profile', methods=['GET'])
-@jwt_required()
-def get_user_profile():
-    user_id = get_jwt_identity()
-    user = User.objects(id=user_id).first()
-
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
-
-    profile = {
-        'email': user.email,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'gender': user.gender,
-        'phone_number': user.phone_number,
-        'profile_picture': user.profile_picture,
-        'created_at': user.created_at
-    }
-
-    return jsonify({
-        'role': user.role,
-        'profile': profile
-    }), 200
-
-# update user profile
-@auth_bp.route('/update-profile', methods=['PUT'])
-@jwt_required()
-def update_profile():
-    user_id = get_jwt_identity()
-
-    user = User.objects(id=user_id).first()
-
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
-
-    data = request.get_json()
-
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    phone_number = data.get('phone_number')
-    gender = data.get('gender')
-
-    if first_name:
-        user.first_name = first_name
-    if last_name:
-        user.last_name = last_name
-    if phone_number:
-        user.phone_number = phone_number
-    if gender:
-        user.gender = gender
-
-    user.save()
-
-    return jsonify({'message': 'Profile updated successfully'}), 200
-
-# update user profile picture
-@auth_bp.route('/update-profile-picture', methods=['POST'])
-@jwt_required()
-def update_profile_picture():
-    user_id = get_jwt_identity()
-    user = User.objects(id=user_id).first()
-
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
-
-    if 'profile_picture' not in request.files:
-        return jsonify({'message': 'No file part'}), 400
-
-    file = request.files['profile_picture']
-
-    if file.filename == '':
-        return jsonify({'message': 'No selected file'}), 400
-
-    try:
-        if user.cloudinary_id:
-            cloudinary.uploader.destroy(user.cloudinary_id)
-
-        upload_result = cloudinary.uploader.upload(file)
-        profile_url = upload_result.get('secure_url')
-        public_id = upload_result.get('public_id')
-
-        user.profile_picture = profile_url
-        user.cloudinary_id = public_id
-        user.save()
-
-        return jsonify({
-            'message': 'Profile picture updated successfully',
-            'profile_picture': profile_url
-        }), 200
-
-    except Exception as e:
-        return jsonify({'message': 'Upload failed', 'error': str(e)}), 500
-
-# delete user profile picture
-@auth_bp.route('/delete-profile-picture', methods=['DELETE'])
-@jwt_required()
-def delete_profile_picture():
-    user_id = get_jwt_identity()
-    user = User.objects(id=user_id).first()
-
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
-
-    if not user.cloudinary_id:
-        return jsonify({'message': 'No profile picture found'}), 404
-
-    try:
-        cloudinary.uploader.destroy(user.cloudinary_id)
-
-        user.profile_picture = None
-        user.cloudinary_id = None
-        user.save()
-
-        return jsonify({'message': 'Profile picture deleted successfully'}), 200
-
-    except Exception as e:
-        return jsonify({'message': 'Deletion failed', 'error': str(e)}), 500

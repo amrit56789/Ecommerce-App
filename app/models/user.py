@@ -1,4 +1,4 @@
-from app import db
+from app.extensions import db
 from flask_bcrypt import generate_password_hash, check_password_hash
 from datetime import datetime
 
@@ -16,6 +16,7 @@ class User(db.Document):
     otp_expiry = db.DateTimeField()
     profile_picture = db.StringField()
     cloudinary_id = db.StringField()
+    is_admin = db.BooleanField(default=False)
 
     def hash_password(self):
         self.password = generate_password_hash(self.password).decode('utf8')
@@ -33,7 +34,8 @@ class User(db.Document):
                 admin = User(
                     email='admin@admin.com',
                     password='admin123',
-                    role=role
+                    role=role,
+                    is_admin=True
                 )
                 admin.hash_password()
                 admin.save()

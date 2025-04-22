@@ -53,7 +53,7 @@ def login():
     user = User.objects(email=data['email']).first()
 
     if not user or not user.check_password(data['password']):
-        return jsonify({'message': 'Invalid credentials'}), 401
+        return jsonify({'message': 'Please enter a valid password'}), 401
 
     access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
     return jsonify({'access_token': access_token, 'role': user.role}), 200

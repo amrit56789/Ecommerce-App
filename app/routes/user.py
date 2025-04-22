@@ -48,7 +48,7 @@ def update_profile():
 
     return jsonify({'message': 'Profile updated successfully'}), 200
 
-
+# Update profile picture
 @user_bp.route('/update-profile-pic', methods=['POST'])
 @jwt_required()
 def update_profile_picture():

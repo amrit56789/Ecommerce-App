@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <h1 class="title">Create an account</h1>
+
+        <div id="error-message" class="error-message hidden"></div>
+
+        <form id="signup-form">
+            <div class="input-group">
+                <label for="email" class="input-label">Email</label>
+                <input type="email" id="email" placeholder="Enter your email" class="input-field">
+            </div>
+
+            <div class="input-group password-group">
+                <label for="password" class="input-label">Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" placeholder="Enter your password" class="input-field">
+                    <span class="toggle-password" onclick="togglePassword('password', this)">
+                        <i class="bi bi-eye"></i>
+                    </span>
+                </div>
+            </div>
+
+            <div class="input-group password-group">
+                <label for="password_confirmation" class="input-label">Confirm Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password_confirmation" placeholder="Confirm your password"
+                        class="input-field">
+                    <span class="toggle-password" onclick="togglePassword('password_confirmation', this)">
+                        <i class="bi bi-eye"></i>
+                    </span>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Sign Up</button>
+        </form>
+
+        <div class="signup-link">
+            <p>Already have an account?
+                <a href="{{ url_for('admin_ui.login_page') }}" class="signup-link-text"> Go to login</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const signupForm = document.getElementById('signup-form');
+        const errorMessage = document.getElementById('error-message');
+
+        signupForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const passwordConfirmation = document.getElementById('password_confirmation').value;
+
+            errorMessage.textContent = '';
+            errorMessage.classList.add('hidden');
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        password_confirmation: passwordConfirmation
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Reset the form fields
+                    signupForm.reset();
+
+                    // Optionally display a success message before redirecting
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    errorMessage.textContent = data.message || 'An error occurred, please try again.';
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMessage.textContent = 'An error occurred, please try again.';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+    });
+
+    function togglePassword(fieldId, toggleElement) {
+        const input = document.getElementById(fieldId);
+        const icon = toggleElement.querySelector('i');
+
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.remove("bi-eye");
+            icon.classList.add("bi-eye-slash");
+        } else {
+            input.type = "password";
+            icon.classList.remove("bi-eye-slash");
+            icon.classList.add("bi-eye");
+        }
+    }
+</script>
+{% endblock %}

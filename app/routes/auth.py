@@ -1,5 +1,6 @@
+# auth.py
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token
 from flask_mail import Message
 from app import bcrypt, mail
 import random
@@ -7,13 +8,13 @@ from datetime import datetime, timedelta
 from .auth_decorator import role_required
 import cloudinary
 import cloudinary.uploader
-from flask import request, jsonify
 from app.models.user import User
 from app.models.role import Role
+from app.helpers.auth_helpers import validate_email, validate_password
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-#register api
+# Register API
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -22,24 +23,13 @@ def register():
     password = data.get('password', '').strip()
     role_name = data.get('role', 'user')
 
-    if not email:
-        return jsonify({'message': 'Email is required'}), 400
+    is_valid_email, email_error = validate_email(email)
+    if not is_valid_email:
+        return jsonify({'message': email_error}), 400
 
-    if '@' not in email or '.' not in email.split('@')[-1]:
-        return jsonify({'message': 'Invalid email format'}), 400
-
-    if not password:
-        return jsonify({'message': 'Password is required'}), 400
-
-    if len(password) < 6:
-        return jsonify({'message': 'Password must be at least 6 characters'}), 400
-
-    has_upper = any(c.isupper() for c in password)
-    has_digit = any(c.isdigit() for c in password)
-    has_special = any(not c.isalnum() for c in password)
-
-    if not (has_upper and has_digit and has_special):
-        return jsonify({'message': 'Password must contain at least one uppercase letter, one number, and one special character'}), 400
+    is_valid_password, password_error = validate_password(password)
+    if not is_valid_password:
+        return jsonify({'message': password_error}), 400
 
     if User.objects(email=email).first():
         return jsonify({'message': 'Email already exists'}), 409
@@ -58,7 +48,7 @@ def register():
 
     return jsonify({'message': 'User registered successfully'}), 201
 
-# login api
+# Login API
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -66,15 +56,14 @@ def login():
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
 
-    if not email:
-        return jsonify({'message': 'Email is required'}), 400
+    is_valid_email, email_error = validate_email(email)
+    if not is_valid_email:
+        return jsonify({'message': email_error}), 400
 
-    if '@' not in email or '.' not in email.split('@')[-1]:
-        return jsonify({'message': 'Invalid email format'}), 400
-
+    # Password validation (checking if empty or less than 8 characters)
     if not password:
         return jsonify({'message': 'Password is required'}), 400
-
+    
     user = User.objects(email=email).first()
 
     if not user:
@@ -91,6 +80,7 @@ def login():
     }), 200
 
 
+# Forgot Password API (Send OTP)
 @auth_bp.route('/send-email-code', methods=['POST'])
 def forgot_password():
     data = request.get_json()
@@ -124,7 +114,7 @@ def forgot_password():
         print(f"Error sending email: {e}")
         return jsonify({'message': 'Failed to send OTP email'}), 500
 
-# verify otp api
+# Verify OTP API
 @auth_bp.route('/verify-email-code', methods=['POST'])
 def verify_email_code():
     data = request.get_json()
@@ -147,13 +137,11 @@ def verify_email_code():
     if current_time > user.otp_expiry:
         return jsonify({'message': 'OTP has expired'}), 400
 
-    user.reset_otp = None
-    user.otp_expiry = None
     user.save()
 
     return jsonify({'message': 'OTP verified successfully'}), 200
 
-# reset password
+# Reset Password API
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json()
@@ -181,4 +169,3 @@ def reset_password():
     user.save()
 
     return jsonify({'message': 'Password reset successfully'}), 200
-

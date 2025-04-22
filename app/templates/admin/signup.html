@@ -78,10 +78,8 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Reset the form fields
                     signupForm.reset();
 
-                    // Optionally display a success message before redirecting
                     window.location.href = '/admin/dashboard';
                 } else {
                     errorMessage.textContent = data.message || 'An error occurred, please try again.';

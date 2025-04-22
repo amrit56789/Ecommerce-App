@@ -1,4 +1,3 @@
-# app/__init__.py
 from flask import Flask
 from flask_mongoengine import MongoEngine
 from flask_jwt_extended import JWTManager
@@ -24,7 +23,8 @@ def create_app(config_class=Config):
     from app.models.role import Role
     
     Role.initialize_roles()
-    
+    User.create_default_admin()
+
     from app.routes.auth import auth_bp
     app.register_blueprint(auth_bp)
     

@@ -5,9 +5,6 @@ class Role(db.Document):
 
     @staticmethod
     def initialize_roles():
-        if not Role.objects(name='admin'):
-            Role(name='admin').save()
-        if not Role.objects(name='seller'):
-            Role(name='seller').save()
-        if not Role.objects(name='user'):
-            Role(name='user').save()
+        for role_name in ['admin', 'seller', 'user']:
+            if not Role.objects(name=role_name):
+                Role(name=role_name).save()

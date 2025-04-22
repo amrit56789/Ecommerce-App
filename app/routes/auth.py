@@ -21,25 +21,24 @@ def register():
     if not all(key in data for key in ['email', 'password']):
         return jsonify({'message': 'Missing required fields'}), 400
 
-    if data.get('role'):
-        role = Role.objects(name=data['role']).first()
-        if not role:
-            return jsonify({'message': 'Invalid role'}), 400
-    else:
-        role = Role.objects(name='user').first()
-    
     if User.objects(email=data['email']).first():
         return jsonify({'message': 'Email already exists'}), 409
+
+    role_name = data.get('role', 'user')
+    role = Role.objects(name=role_name).first()
+    if not role:
+        return jsonify({'message': 'Invalid role'}), 400
 
     user = User(
         email=data['email'],
         password=data['password'],
-        role=role.name
+        role=role  # Storing role reference
     )
     user.hash_password()
     user.save()
 
     return jsonify({'message': 'User registered successfully'}), 201
+
 
 
 # user login api

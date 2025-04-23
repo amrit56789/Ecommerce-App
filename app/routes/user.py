@@ -2,10 +2,13 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.user import User
 import cloudinary.uploader
+from constants import GET_USER_PROFILE, UPDATE_PROFILE, UPDATE_PROFILE_PIC, DELETE_PROFILE_PIC
+
+
 user_bp = Blueprint('user', __name__, url_prefix='/user')
 
 # Get user profile
-@user_bp.route('/me', methods=['GET'])
+@user_bp.route(GET_USER_PROFILE, methods=['GET'])
 @jwt_required()
 def get_user_profile():
     user_id = get_jwt_identity()
@@ -15,22 +18,23 @@ def get_user_profile():
         return jsonify({'message': 'User not found'}), 404
 
     profile = {
-        'email': user.email,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'gender': user.gender,
-        'phone_number': user.phone_number,
-        'profile_picture': user.profile_picture,
-        'created_at': user.created_at
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "mobile": user.phone_number,
+        "profile_pic": user.profile_pic,
+        "id": str(user.id),
+        "role": {
+            "name": user.role.name if user.role else None,
+            "id": str(user.role.id) if user.role else None
+        }
     }
 
-    return jsonify({
-        'profile': profile
-    }), 200
+    return jsonify({"data": profile}), 200
 
 
 # Update user profile
-@user_bp.route('/update-profile', methods=['POST'])
+@user_bp.route(UPDATE_PROFILE, methods=['PUT'])
 @jwt_required()
 def update_profile():
     user_id = get_jwt_identity()
@@ -49,7 +53,7 @@ def update_profile():
     return jsonify({'message': 'Profile updated successfully'}), 200
 
 # Update profile picture
-@user_bp.route('/update-profile-pic', methods=['POST'])
+@user_bp.route(UPDATE_PROFILE_PIC, methods=['POST'])
 @jwt_required()
 def update_profile_picture():
     user_id = get_jwt_identity()
@@ -58,10 +62,10 @@ def update_profile_picture():
     if not user:
         return {"message": "User not found"}, 404
 
-    if 'profile_picture' not in request.files:
+    if 'image' not in request.files:
         return {"message": "No file part"}, 400
 
-    file = request.files['profile_picture']
+    file = request.files['image']
     if file.filename == '':
         return {"message": "No selected file"}, 400
 
@@ -70,20 +74,20 @@ def update_profile_picture():
             cloudinary.uploader.destroy(user.cloudinary_id)
 
         upload_result = cloudinary.uploader.upload(file.stream)
-        user.profile_picture = upload_result['secure_url']
+        user.profile_pic = upload_result['secure_url']
         user.cloudinary_id = upload_result['public_id']
         user.save()
 
         return {
             "message": "Profile picture updated",
-            "profile_picture": user.profile_picture
+            "profile_pic": user.profile_pic
         }, 200
 
     except Exception as e:
         return {"message": "Upload failed", "error": str(e)}, 500
 
 # Delete profile picture
-@user_bp.route('/delete-profile-pic', methods=['DELETE'])
+@user_bp.route(DELETE_PROFILE_PIC, methods=['DELETE'])
 @jwt_required()
 def delete_profile_picture():
     user_id = get_jwt_identity()

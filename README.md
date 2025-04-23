@@ -10,7 +10,7 @@
 - select the virtual environment:
   - For windows `source venv\Scripts\activate`
   - For Linux or MacOS `source venv/bin/activate`
-- install dependencies using `pip install -r requirements.txt`
+- install dependencies using `pip3 install -r requirements.txt`
 - create a `.env` file and copy content of `sample.env` to it
 - update the `.env` file according to your configurations
 - run one of the following command to start the server:

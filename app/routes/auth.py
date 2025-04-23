@@ -1,4 +1,3 @@
-# auth.py
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token
 from flask_mail import Message
@@ -10,69 +9,88 @@ import cloudinary
 import cloudinary.uploader
 from app.models.user import User
 from app.models.role import Role
-from app.helpers.auth_helpers import validate_email, validate_password
+from app.utils.validation import validate_email, validate_password, validate_required_fields
+from app.utils.utils import create_error_response
+from constants import OTP_EXPIRY_MINUTES, REGISTER, LOGIN, FORGOT_PASSWORD, VERIFY_OTP, RESET_PASSWORD
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# Register API
-@auth_bp.route('/register', methods=['POST'])
+@auth_bp.route(REGISTER, methods=['POST'])
 def register():
     data = request.get_json()
 
-    email = data.get('email', '').strip()
-    password = data.get('password', '').strip()
-    role_name = data.get('role', 'user')
+    is_valid, errors = validate_required_fields(data, ['email', 'password', 'password_confirmation'])
+    if not is_valid:
+        return create_error_response(errors, 400)
 
-    is_valid_email, email_error = validate_email(email)
+    is_valid_email, email_error = validate_email(data.get('email', ''))
     if not is_valid_email:
-        return jsonify({'message': email_error}), 400
+        return create_error_response({"email": email_error}, 400)
 
-    is_valid_password, password_error = validate_password(password)
+    is_valid_password, password_error = validate_password(data.get('password', ''))
     if not is_valid_password:
-        return jsonify({'message': password_error}), 400
+        return create_error_response({"password": password_error}, 400)
 
-    if User.objects(email=email).first():
-        return jsonify({'message': 'Email already exists'}), 409
+    if data.get('password') != data.get('password_confirmation'):
+        return create_error_response({"password_confirmation": "Password and confirmation do not match."}, 400)
 
+    if User.objects(email=data.get('email')).first():
+        return create_error_response({"email": "Email already exists"}, 409)
+
+    role_name = data.get('role', 'user')
     role = Role.objects(name=role_name).first()
+
     if not role:
-        return jsonify({'message': 'Invalid role'}), 400
+        return create_error_response({"role": "Invalid role"}, 400)
 
     user = User(
-        email=email,
-        password=password,
+        email=data.get('email'),
+        password=data.get('password'),
         role=role
     )
     user.hash_password()
     user.save()
 
-    return jsonify({'message': 'User registered successfully'}), 201
+    access_token = create_access_token(identity=str(user.id), additional_claims={'role': role_name})
+
+    user_data = {
+        'id': str(user.id),
+        'email': user.email,
+        'role': {
+            'id': str(role.id),
+            'name': role.name
+        }
+    }
+
+    return jsonify({
+        'message': 'User registered successfully',
+        'user': user_data,
+        'access_token': access_token
+    }), 200
+
 
 # Login API
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route(LOGIN, methods=['POST'])
 def login():
     data = request.get_json()
 
-    email = data.get('email', '').strip()
-    password = data.get('password', '').strip()
+    is_valid, errors = validate_required_fields(data, ['email', 'password'])
+    if not is_valid:
+        return create_error_response(errors, 400)
 
-    is_valid_email, email_error = validate_email(email)
+    is_valid_email, email_error = validate_email(data.get('email'))
     if not is_valid_email:
-        return jsonify({'message': email_error}), 400
+        return create_error_response({"email": email_error}, 400)
 
-    # Password validation (checking if empty or less than 8 characters)
-    if not password:
-        return jsonify({'message': 'Password is required'}), 400
-    
-    user = User.objects(email=email).first()
+    user = User.objects(email=data.get('email')).first()
 
     if not user:
-        return jsonify({'message': 'User with this email does not exist'}), 404
+        return create_error_response({"email": "User with this email does not exist"}, 404)
 
-    if not user.check_password(password):
-        return jsonify({'message': 'Invalid password'}), 401
+    if not user.check_password(data.get('password')):
+        return create_error_response({"password": "Invalid password"}, 401)
 
-    access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role})
+    access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role.name})
 
     return jsonify({
         'message': 'Login successful',
@@ -81,7 +99,7 @@ def login():
 
 
 # Forgot Password API (Send OTP)
-@auth_bp.route('/send-email-code', methods=['POST'])
+@auth_bp.route(FORGOT_PASSWORD, methods=['POST'])
 def forgot_password():
     data = request.get_json()
     email = data.get('email')
@@ -91,10 +109,10 @@ def forgot_password():
 
     user = User.objects(email=email).first()
     if not user:
-        return jsonify({'message': 'No account associated with this email address'}), 400
+        return jsonify({'errors': 'No account associated with this email address'}), 400
 
     otp = ''.join(random.choices('0123456789', k=6))
-    expiry_time = datetime.utcnow() + timedelta(minutes=10)
+    expiry_time = datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
     user.reset_otp = otp
     user.otp_expiry = expiry_time
@@ -115,21 +133,21 @@ def forgot_password():
         return jsonify({'message': 'Failed to send OTP email'}), 500
 
 # Verify OTP API
-@auth_bp.route('/verify-email-code', methods=['POST'])
+@auth_bp.route(VERIFY_OTP, methods=['POST'])
 def verify_email_code():
     data = request.get_json()
     email = data.get('email')
     otp = data.get('code')
 
     if not email or not otp:
-        return jsonify({'message': 'Email and OTP are required'}), 400
+        return jsonify({'errors': 'Email and OTP are required'}), 400
 
     user = User.objects(email=email).first()
     if not user:
-        return jsonify({'message': 'Invalid email or OTP'}), 400
+        return jsonify({'errors': 'Invalid email or OTP'}), 400
 
     if not user.reset_otp or not user.otp_expiry:
-        return jsonify({'message': 'No OTP requested for this email'}), 400
+        return jsonify({'errors': 'No OTP requested for this email'}), 400
 
     current_time = datetime.utcnow()
     if user.reset_otp != otp:
@@ -142,7 +160,7 @@ def verify_email_code():
     return jsonify({'message': 'OTP verified successfully'}), 200
 
 # Reset Password API
-@auth_bp.route('/reset-password', methods=['POST'])
+@auth_bp.route(RESET_PASSWORD, methods=['POST'])
 def reset_password():
     data = request.get_json()
     email = data.get('email')
@@ -150,7 +168,7 @@ def reset_password():
     new_password = data.get('password')
 
     if not email or not otp or not new_password:
-        return jsonify({'message': 'Email, OTP, and new password are required'}), 400
+        return jsonify({'errors': 'Email, OTP, and new password are required'}), 400
 
     user = User.objects(email=email).first()
     if not user:

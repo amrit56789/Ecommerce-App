@@ -79,7 +79,6 @@ button:hover {
   outline: none;
 }
 
-/* Password wrapper */
 .password-wrapper {
   position: relative;
 }
@@ -92,7 +91,6 @@ button:hover {
   cursor: pointer;
 }
 
-/* Button */
 .submit-btn {
   width: 100%;
   background-color: #4a90e2;
@@ -110,14 +108,12 @@ button:hover {
   background-color: #3c7dc4;
 }
 
-/* Error & message */
 .error-message,
 .message {
   margin-bottom: 1rem;
   padding: 0.75rem;
   border-radius: 6px;
   font-size: 14px;
-  display: none;
 }
 
 .error-message {
@@ -157,15 +153,16 @@ button:hover {
   margin-top: 1.5rem;
 }
 
-
-.hidden {
-  display: none;
-}
-
 .message {
   background-color: #e6ffe6;
   color: #006600;
   padding: 10px;
   border-radius: 6px;
   margin-bottom: 1rem;
+}
+
+.field-error {
+  color: red;
+  font-size: 0.8rem;
+  margin-top: 4px;
 }

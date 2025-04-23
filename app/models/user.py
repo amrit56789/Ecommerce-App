@@ -1,6 +1,9 @@
-from app.extensions import db
+import os
+from app import db
 from flask_bcrypt import generate_password_hash, check_password_hash
 from datetime import datetime
+from constants import GENDER_CHOICES, ROLE_ADMIN
+from app.models.role import Role
 
 class User(db.Document):
     email = db.StringField(required=True, unique=True)
@@ -14,7 +17,7 @@ class User(db.Document):
     reset_token = db.StringField()
     reset_otp = db.StringField()
     otp_expiry = db.DateTimeField()
-    profile_picture = db.StringField()
+    profile_pic = db.StringField()
     cloudinary_id = db.StringField()
     is_admin = db.BooleanField(default=False)
 
@@ -26,21 +29,27 @@ class User(db.Document):
 
     @staticmethod
     def create_default_admin():
-        from app.models.role import Role
+        role = Role.objects(name='admin').first()
+        if not role:
+            print("Admin role not found. Cannot create default admin.")
+            return
 
-        if not User.objects(email='admin@admin.com').first():
-            role = Role.objects(name='admin').first()
-            if role:
-                admin = User(
-                    email='admin@admin.com',
-                    password='admin123',
-                    role=role,
-                    is_admin=True
-                )
-                admin.hash_password()
-                admin.save()
-                print("Default admin user created.")
-            else:
-                print("Admin role not found. Cannot create default admin.")
+        if not User.objects(email=os.getenv("DEFAULT_ADMIN_EMAIL")).first():
+            admin = User(
+                email=os.getenv("DEFAULT_ADMIN_EMAIL"),
+                password=os.getenv("DEFAULT_ADMIN_PASSWORD"),
+                role=role,
+                is_admin=True
+            )
+            admin.hash_password()
+            admin.save()
+            print("Default admin user created.")
         else:
             print("Admin user already exists.")
+
+    @staticmethod
+    def validate_role(role_name):
+        role = Role.objects(name=role_name).first()
+        if not role:
+            raise ValueError(f"Role '{role_name}' does not exist.")
+        return role

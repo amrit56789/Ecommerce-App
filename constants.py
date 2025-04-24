@@ -18,7 +18,7 @@ OTP_EXPIRY_MINUTES = 10
 
 
 # API Endpoint Constants
-BASE_URL = '/auth'
+BASE_URL = ''
 
 REGISTER = f'{BASE_URL}/register'
 LOGIN = f'{BASE_URL}/login'
@@ -27,8 +27,9 @@ VERIFY_OTP = f'{BASE_URL}/verify-email-code'
 RESET_PASSWORD = f'{BASE_URL}/reset-password'
 
 
+
 # User API Endpoint Constants
-USER_BASE_URL = '/user'
+USER_BASE_URL = ''
 
 GET_USER_PROFILE = f'{USER_BASE_URL}/me'
 UPDATE_PROFILE = f'{USER_BASE_URL}/update-profile'

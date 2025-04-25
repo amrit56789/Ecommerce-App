@@ -4,7 +4,7 @@ from flask_mail import Message
 from app import bcrypt, mail
 import random
 from datetime import datetime, timedelta
-from .auth_decorator import role_required
+from app.routes.auth_decorator import role_required
 import cloudinary
 import cloudinary.uploader
 from app.models.user import User
@@ -198,3 +198,5 @@ def reset_password():
 def logout():
     session.clear()
     return jsonify({'message': 'Logout successful'}), 200
+
+

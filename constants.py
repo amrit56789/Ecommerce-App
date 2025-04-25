@@ -36,10 +36,9 @@ DASHBOARD_WEB_URL = f'/dashboard'
 ALL_USER_LIST_WEB_URL = f'/all-users-list'
 
 # User API Endpoint Constants
-USER_BASE_URL = ''
-
-GET_USER_PROFILE = f'{USER_BASE_URL}/me'
-UPDATE_PROFILE = f'{USER_BASE_URL}/update-profile'
-UPDATE_PROFILE_PIC = f'{USER_BASE_URL}/update-profile-pic'
-DELETE_PROFILE_PIC = f'{USER_BASE_URL}/delete-profile-pic'
-LOGOUT = f'{USER_BASE_URL}/logout'
+GET_USER_PROFILE = f'/me'
+UPDATE_PROFILE = f'/update-profile'
+UPDATE_PROFILE_PIC = f'/update-profile-pic'
+DELETE_PROFILE_PIC = f'/delete-profile-pic'
+LOGOUT = f'/logout'
+ADD_SELLER = f'/add/seller'

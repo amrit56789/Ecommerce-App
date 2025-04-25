@@ -2,6 +2,8 @@ from flask import render_template, request, redirect, session, url_for
 from app.models import User
 from . import admin_api
 from constants import ALL_USER_LIST_WEB_URL
+from app.models.seller import Seller
+from app.models.role import Role
 
 
 @admin_api.route(ALL_USER_LIST_WEB_URL)
@@ -63,7 +65,7 @@ def all_users():
     return render_template("admin/users/allUserList.html", allUsersList=users_data, filters={'search': search})
 
 
-@admin_api.route('/users/add')
+@admin_api.route('/users/add/seller')
 def add_user():
     if 'user_id' not in session:
         return redirect(url_for('admin_api.login_page'))

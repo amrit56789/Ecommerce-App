@@ -14,13 +14,14 @@ def create_app(config_class=Config):
 
     from app.models.user import User
     from app.models.role import Role
+    from app.models.seller import Seller
+    from app.models.address import Address
 
     Role.initialize_roles()
     User.create_default_admin()
-
-    from app.routes.auth import auth_bp
-    from app.routes.admin_api import admin_api
-    from app.routes.user import user_bp
+    from app.routes.api.auth import auth_bp
+    from app.routes.web import admin_api
+    from app.routes.api.user import user_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_api)

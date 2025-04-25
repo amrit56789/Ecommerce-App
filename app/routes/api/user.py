@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models.user import User
+from app.models import User, Role, Seller, Address
 import cloudinary.uploader
-from constants import GET_USER_PROFILE, UPDATE_PROFILE, UPDATE_PROFILE_PIC, DELETE_PROFILE_PIC
+from constants import GET_USER_PROFILE, UPDATE_PROFILE, UPDATE_PROFILE_PIC, DELETE_PROFILE_PIC, ADD_SELLER
+from app.utils.validation import validate_email, validate_password, validate_required_fields
 
 
 user_bp = Blueprint('user', __name__, url_prefix='/user')
@@ -109,3 +110,85 @@ def delete_profile_picture():
 
     except Exception as e:
         return jsonify({'message': 'Deletion failed', 'error': str(e)}), 500
+
+# Add seller api
+from app import db
+from mongoengine import ValidationError
+from flask import jsonify
+
+@user_bp.route(ADD_SELLER, methods=['POST'])
+def add_seller():
+    data = request.get_json()
+
+    required_fields = ['email', 'password', 'first_name', 'last_name', 'phone_number', 'store_name', 'store_logo', 'line1', 'city', 'state', 'country', 'pincode', 'gst_number', 'address_type']
+    is_valid, errors = validate_required_fields(data, required_fields)
+    if not is_valid:
+        return jsonify({"errors": errors}), 400
+
+    is_valid, email_error = validate_email(data.get('email'))
+    if not is_valid:
+        return jsonify({"error": email_error}), 400
+
+    is_valid, password_error = validate_password(data.get('password'))
+    if not is_valid:
+        return jsonify({"error": password_error}), 400
+
+    if User.objects(email=data.get('email')).first():
+        return jsonify({"error": "User with this email already exists"}), 400
+
+    default_role = Role.objects(name='user').first()
+    if not default_role:
+        return jsonify({"error": "Default role not found"}), 500
+
+    with db.connection.start_session() as session:
+        session.start_transaction()
+
+        try:
+            user = User(
+                email=data.get('email'),
+                password=data.get('password'),
+                first_name=data.get('first_name'),
+                last_name=data.get('last_name'),
+                phone_number=data.get('phone_number'),
+                role=default_role
+            )
+            user.hash_password()
+            user.save(session=session)
+
+            address = Address(
+                user_id=user,
+                line1=data.get('line1'),
+                line2=data.get('line2'),
+                city=data.get('city'),
+                state=data.get('state'),
+                postal_code=data.get('pincode'),
+                country=data.get('country'),
+                type=data.get('address_type')
+            )
+            address.save(session=session)
+
+            seller = Seller(
+                user_id=user,
+                store_name=data.get('store_name'),
+                store_logo=data.get('store_logo'),
+                address=address,
+                gst_number=data.get('gst_number'),
+                is_approved='pending'
+            )
+            seller.save(session=session)
+
+            session.commit_transaction()
+
+            return jsonify({
+                "message": "Seller registered successfully. Awaiting approval.",
+                "user_id": str(user.id),
+                "seller_id": str(seller.id)
+            }), 200
+
+        except ValidationError as e:
+            session.abort_transaction()
+            return jsonify({"error": "Validation error: " + str(e)}), 400
+
+        except Exception as e:
+            session.abort_transaction()
+            return jsonify({"error": "Error occurred: " + str(e)}), 500

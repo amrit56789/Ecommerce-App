@@ -19,11 +19,11 @@ def create_app(config_class=Config):
     User.create_default_admin()
 
     from app.routes.auth import auth_bp
-    from app.routes.admin_ui import admin_ui
+    from app.routes.admin_api import admin_api
     from app.routes.user import user_bp
 
     app.register_blueprint(auth_bp)
-    app.register_blueprint(admin_ui)
+    app.register_blueprint(admin_api)
     app.register_blueprint(user_bp)
 
     @app.before_request
@@ -35,6 +35,6 @@ def create_app(config_class=Config):
 
     @app.route('/')
     def index():
-        return redirect(url_for('admin_ui.login_page'))
+        return redirect(url_for('admin_api.login_page'))
 
     return app

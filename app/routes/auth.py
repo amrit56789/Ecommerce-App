@@ -11,7 +11,7 @@ from app.models.user import User
 from app.models.role import Role
 from app.utils.validation import validate_email, validate_password, validate_required_fields
 from app.utils.utils import create_error_response
-from constants import OTP_EXPIRY_MINUTES, REGISTER, LOGIN, FORGOT_PASSWORD, VERIFY_OTP, RESET_PASSWORD
+from constants import OTP_EXPIRY_MINUTES, REGISTER, LOGIN, FORGOT_PASSWORD, VERIFY_OTP, RESET_PASSWORD, LOGOUT
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -70,6 +70,8 @@ def register():
 
 
 # Login API
+from flask import session
+
 @auth_bp.route(LOGIN, methods=['POST'])
 def login():
     data = request.get_json()
@@ -92,10 +94,14 @@ def login():
 
     access_token = create_access_token(identity=str(user.id), additional_claims={'role': user.role.name})
 
+    session['user_id'] = str(user.id)
+    session['user_role'] = user.role.name
+
     return jsonify({
         'message': 'Login successful',
         'access_token': access_token
     }), 200
+
 
 
 # Forgot Password API (Send OTP)
@@ -187,3 +193,8 @@ def reset_password():
     user.save()
 
     return jsonify({'message': 'Password reset successfully'}), 200
+
+@auth_bp.route(LOGOUT, methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'message': 'Logout successful'}), 200

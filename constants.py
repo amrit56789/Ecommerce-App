@@ -26,7 +26,14 @@ FORGOT_PASSWORD = f'{BASE_URL}/send-email-code'
 VERIFY_OTP = f'{BASE_URL}/verify-email-code'
 RESET_PASSWORD = f'{BASE_URL}/reset-password'
 
-
+# WEB Endpoint Constants
+Login_WEB_URL = f'/login'
+SIGNUP_WEB_URL = f'/signup'
+FORGOT_PASSWORD_WEB_URL = f'/forgot-password'
+VERIFY_OTP_WEB_URL= f'/verify-otp'
+RESET_PASSWORD_WEB_URL = f'/reset-password'
+DASHBOARD_WEB_URL = f'/dashboard'
+ALL_USER_LIST_WEB_URL = f'/all-users-list'
 
 # User API Endpoint Constants
 USER_BASE_URL = ''
@@ -35,3 +42,4 @@ GET_USER_PROFILE = f'{USER_BASE_URL}/me'
 UPDATE_PROFILE = f'{USER_BASE_URL}/update-profile'
 UPDATE_PROFILE_PIC = f'{USER_BASE_URL}/update-profile-pic'
 DELETE_PROFILE_PIC = f'{USER_BASE_URL}/delete-profile-pic'
+LOGOUT = f'{USER_BASE_URL}/logout'

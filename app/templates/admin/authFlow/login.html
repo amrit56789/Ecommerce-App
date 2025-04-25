@@ -111,7 +111,7 @@
         console.log(result, ">>>>")
         if (result.success) {
           loginForm.reset();
-          window.location.href = '/dashboard';
+          window.location.href = '/dashboard'; // Redirect after login
         } else if (result.errors) {
           if (result.errors.email) {
             emailErrorEl.textContent = result.errors.email;
@@ -129,7 +129,7 @@
         }
 
       } catch (error) {
-       
+        console.error(error);
       }
     });
 

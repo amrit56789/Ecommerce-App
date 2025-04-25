@@ -1,10 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Admin Dashboard</title>
-</head>
-<body>
-  <h1>Dashboard</h1>
-  <div id="user-list">Loading users...</div>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block admin_content %}
+<div class="bg-white rounded-lg shadow p-6">
+  <h1 class="text-2xl font-bold mb-4">Welcome to Dashboard</h1>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Highlight current page in sidebar
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    navLinks.forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('bg-indigo-700', 'text-white');
+      }
+    });
+  });
+</script>
+{% endblock %}

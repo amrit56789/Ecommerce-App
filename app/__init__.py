@@ -1,6 +1,7 @@
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, session, g
 from app.extensions import db, jwt, mail, bcrypt
-from .config import Config 
+from .config import Config
+from app.models import User
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -24,6 +25,13 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_ui)
     app.register_blueprint(user_bp)
+
+    @app.before_request
+    def before_request():
+        if 'user_id' in session:
+            g.current_user = User.objects(id=session['user_id']).first()
+        else:
+            g.current_user = None
 
     @app.route('/')
     def index():

@@ -120,7 +120,7 @@ from flask import jsonify
 def add_seller():
     data = request.get_json()
 
-    required_fields = ['email', 'password', 'first_name', 'last_name', 'phone_number', 'store_name', 'store_logo', 'line1', 'city', 'state', 'country', 'pincode', 'gst_number', 'address_type']
+    required_fields = ['email', 'password', 'first_name', 'last_name', 'phone_number', 'store_name', 'line1', 'city', 'state', 'country', 'pincode', 'gst_number', 'address_type']
     is_valid, errors = validate_required_fields(data, required_fields)
     if not is_valid:
         return jsonify({"errors": errors}), 400

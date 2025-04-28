@@ -110,7 +110,7 @@
         loadingSpinner.classList.add('hidden');
         if (result.success) {
           loginForm.reset();
-          window.location.href = '/dashboard'; // Redirect after login
+          window.location.href = '/dashboard';
         } else if (result.errors) {
           if (result.errors.email) {
             emailErrorEl.textContent = result.errors.email;
